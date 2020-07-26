@@ -1,0 +1,133 @@
+(*Module 1, Identifying the vertices and edges.*)
+(**)
+Mod1[{a1_, a2_, a3_, a4_, a6_}, {B_, x_, y_}, x0_ : 1/2] := 
+ Module[{f, blackVertices, whiteVertices, EdgeSet, i, k, Notes, LabelVertices},
+    Print["Entering Mod1"];
+    f = (y^2 + a1*x*y + a3*y) - (x^3 + a2*x^2 + a4*x + a6);
+    blackVertices = {x, y} /. NSolve[{B == 0, f == 0}, {x, y}]; (*Solving for the points corresponding to branch point 0*)
+    whiteVertices = {x, y} /. NSolve[{B == 1, f == 0}, {x, y}]; (*Solving for the points corresponding to branch point 1*)
+    LabelVertices = {x, y} /. NSolve[{B == x0, f == 0}, {x, y}];(*This is to label the edges on the Dessin d'Enfant*)
+    EdgeSet = {};
+    Notes = 200;
+    For[i = -Notes, i < Notes, i++, 
+       k = {x, y} /.NSolve[{B == LogisticSigmoid[i*10/Notes], f == 0}, {x, y}];
+       AppendTo[EdgeSet, k];];
+    EdgeSet = Flatten[EdgeSet, 1];
+ Return[{blackVertices, whiteVertices, EdgeSet, LabelVertices}];]
+(**)
+(**)
+(*Module 2, Calculating the root and AGM*)
+(**)
+Mod2[{a1_, a2_, a3_, a4_, a6_}, {x_, y_}] := 
+ Module[{f, e1, e2, e3, i, a0, b0, c0, d0, ai, bi, ci, di, bitemp, ditemp, error},
+    Print["Entering Mod 2"];
+    error = 10^-10;
+    f = (y^2 + a1*x*y + a3*y) - (x^3 + a2*x^2 + a4*x + a6); (*takes the cooeficents of the elliptic curve given as {a1,a2,a3,a4,a6} and gives the elliptic curve*)
+    {e1, e2, e3} = x /. NSolve[{f == 0, 2*y + (a1*x + a3) == 0}, {x, y}]; (*Solves for the roots of the elliptic curve*)
+    a0 = N[Sqrt[e1 - e3]]; (*Initialize a0*)
+    b0 = N[Sqrt[e1 - e2]]; (*Initialize b0*)
+    If[Abs[a0 - b0] <= Abs[a0 + b0], a0 = a0; b0 = b0, a0 = a0;
+       b0 = -b0];
+    ai = {a0};
+    bi = {b0};
+    c0 = N[Sqrt[e2 - e3]]; (*Initialize c0*)
+    d0 = N[Sqrt[e2 - e1]]; (*Initialize d0*)
+    If[Abs[c0 - d0] <= Abs[c0 + d0], c0 = c0; d0 = d0, c0 = c0;
+       d0 = -d0];
+    ci = {c0};
+    di = {d0};
+    i = 1;
+    (*The following while loop calculates the AGM: M(a,b) and M(c,d). The resaulting set follows the form {a0,a1,a2,a3,...}*)
+    While[(Abs[ai[[i]] - bi[[i]]] >= error) \[Or] (Abs[ci[[i]] - di[[i]]] >= error), 
+       AppendTo[ai, N[(ai[[i]] + bi[[i]])/2]];
+       AppendTo[ci, N[(ci[[i]] + di[[i]])/2]];
+       bitemp = N[Sqrt[ai[[i]]*bi[[i]]]];
+       ditemp = N[Sqrt[ci[[i]]*di[[i]]]];
+       If[Abs[ai[[i + 1]] - bitemp] <= Abs[ai[[i + 1]] + bitemp], 
+          AppendTo[bi, bitemp], AppendTo[bi, -bitemp]];
+       If[Abs[ci[[i + 1]] - ditemp] <= Abs[ci[[i + 1]] + ditemp], 
+          AppendTo[di, ditemp], AppendTo[di, -ditemp]];
+    i++;];
+Return[{e1, e2, e3, ai, bi, ci}]]
+(**)
+(**)
+(*Module 3: Calculating the Periods and elliptic logarithms*)
+Mod3[{a1_, a3_}, {e1_, e2_, e3_, ai_, bi_, ci_, xyList_}] := 
+   Module[{w1, w2, i, j, r0, t0, r, t, z, k, xySkip}, 
+   w1 = N[Pi/ai[[-1]]]; (*Calculates the first period omega 1*)
+   w2 = N[Pi/ci[[-1]]]; (*Calculates the second period omega 2*)
+   z = {}; r0 = {}; t = {}; t0 = {}; xySkip = {}; (*Initalizing sets*)
+   i = 1;
+   j = 1;
+   While[i < Length[xyList], 
+      (*The following if statement checks to see if a point is equalivalent to root e1*)
+      If[(2*xyList[[i, 2]] + (a1*xyList[[i, 1]] + a3) == 0 && Min[Abs[xyList[[i, 1]] - e1], Abs[xyList[[i, 1]] - e2], Abs[xyList[[i, 1]] - e3]] == Abs[xyList[[i, 1]] - e1]), 
+         AppendTo[z, N[w1/2]]; (*if the point is a root solve for the elliptic log in this way*)
+         AppendTo[xySkip, i];]; (*and note the index so as to not calculate it later*)
+      (*The following if statement checks to see if a point is equalivalent to our root e2*)    
+      If[(2*xyList[[i, 2]] + (a1*xyList[[i, 1]] + a3) == 0 && Min[Abs[xyList[[i, 1]] - e1], Abs[xyList[[i, 1]] - e2], Abs[xyList[[i, 1]] - e3]] == Abs[xyList[[i, 1]] - e2]), 
+         AppendTo[z, N[w2/2]]; (*if the point is a root solve for the elliptic log in this way*)
+         AppendTo[xySkip, i];];(*and note the index so as to not calculate it later*)
+      (*The following if statement checks to see if a point is equalivalent to our root e3*) 
+      If[(2*xyList[[i, 2]] + (a1*xyList[[i, 1]] + a3) == 0 && Min[Abs[xyList[[i, 1]] - e1], Abs[xyList[[i, 1]] - e2], Abs[xyList[[i, 1]] - e3]] == Abs[xyList[[i, 1]] - e3]), 
+         AppendTo[z, N[(w1 + w2)/2]];(*if the point is a root solve for the elliptic log in this way*)
+         AppendTo[xySkip, i];];(*and note the index so as to not calculate it later*)
+      i++;
+   ];
+   If[Length[xySkip] == Length[xyList], Goto[flag]];
+   For[k = 1, k <= Length[xyList], k++, 
+      (*This while loop assures that we dont calculate the elliptic logarithm for a point that was a root*)
+      While[MemberQ[xySkip, k], k++;
+         AppendTo[t0, 1];
+         AppendTo[r0, 1]
+      ];
+      AppendTo[r0, N[Sqrt[(xyList[[k, 1]] - e3)/(xyList[[k, 1]] - e2)]]]; (*initializes r, for every point, as given by Cremona and Thongjunthung*)
+      If[Re[r0[[-1]]] >= 0, r0[[-1]] = r0[[-1]], r0[[-1]] = -r0[[-1]]];
+      AppendTo[t0, N[(-(2*xyList[[k, 2]] + (a1*xyList[[k, 1]] + a3)))/(2*r0[[-1]]*(xyList[[k, 1]] - e2))]];]; (*initializes t, for every point, as given by Cremona and Thongjunthung*)
+   (**)
+   While[j < Length[ai], 
+      r0 = N[Sqrt[(ai[[j + 1]]*(r0 + 1))/(bi[[j]] r0 + ai[[j]])]]; (*Computes r_infinity, for every point*)
+      t0 = N[r0*t0]; (*Computes t_infinity, for every point*)
+      j++;
+   ];
+   i = 1;
+   While[i <= Length[xyList], While[MemberQ[xySkip, i], i++;];
+      AppendTo[z, N[(1/ai[[-1]]) ArcTan[(ai[[-1]]/t0[[i]])]]];
+      i++;
+   ];
+   Label[flag];
+Return[{z, w1, w2}]]
+(**)
+(**)
+(*Module 4*)
+Mod4[{ZpList_, Omega1_, Omega2_}, color_, size_, IO_] := 
+    Module[{mfxn, nfxn, mList, nList, Modfxn, TwoDCords, plotFlat, rho, ufxn, vfxn, wfxn, uList, vList, wList, ThreeDCords, plotTor}, 
+    mfxn[z_] := Mod[Im[z/Omega2]/Im[Omega1/Omega2], 1];
+    nfxn[z_] := Mod[Im[z/Omega1]/Im[Omega2/Omega1], 1];
+    Modfxn[z_] := Mod[z, 1];
+    mList = Map[mfxn, ZpList];
+    nList = Map[nfxn, ZpList];
+    TwoDCords = Partition[Riffle[mList, nList], 2];
+    If[IO == 1, 
+     plotFlat = 
+      Graphics[{color, PointSize[size], Point[TwoDCords], 
+        Point[{{0, 0}, {0, 1}, {1, 0}, {1, 1}}]}], 
+     plotFlat = Graphics[{color, PointSize[size], Point[TwoDCords]}]];
+    (*plotFlat=Graphics[{color,PointSize[size],Point[TwoDCords],
+  Point[{0,0}]}];*)rho = 2;
+  ufxn[z_] := (rho + Cos[2 Pi*z[[1]]])*Cos[2 Pi*z[[2]]];
+  vfxn[z_] := (rho + Cos[2 Pi*z[[1]]])*Sin[2 Pi*z[[2]]];
+  wfxn[z_] := Sin[2 Pi*z[[1]]];
+  uList = Map[ufxn, TwoDCords];
+  vList = Map[vfxn, TwoDCords];
+  wList = Map[wfxn, TwoDCords];
+  ThreeDCords = Partition[{uList, vList, wList}~Flatten~{2, 1}, 3];
+  If[IO == 1, 
+   plotTor = 
+    Graphics3D[{color, PointSize[size], Point[ThreeDCords], 
+      Point[{{3, 0, 0}}]}], 
+   plotTor = Graphics3D[{color, PointSize[size], Point[ThreeDCords]}]];
+  Return[{plotFlat, plotTor}]]
+
+
+ 
