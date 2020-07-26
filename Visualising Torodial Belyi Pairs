@@ -102,32 +102,99 @@ Return[{z, w1, w2}]]
 (*Module 4*)
 Mod4[{ZpList_, Omega1_, Omega2_}, color_, size_, IO_] := 
     Module[{mfxn, nfxn, mList, nList, Modfxn, TwoDCords, plotFlat, rho, ufxn, vfxn, wfxn, uList, vList, wList, ThreeDCords, plotTor}, 
-    mfxn[z_] := Mod[Im[z/Omega2]/Im[Omega1/Omega2], 1];
-    nfxn[z_] := Mod[Im[z/Omega1]/Im[Omega2/Omega1], 1];
+    mfxn[z_] := Mod[Im[z/Omega2]/Im[Omega1/Omega2], 1]; (*This function will be called to calculate the first coordinate in the coordinate pair (m,n)*)
+    nfxn[z_] := Mod[Im[z/Omega1]/Im[Omega2/Omega1], 1]; (*This function will be called to calculate the second coordinate in the coordinate pair (m,n)*)
     Modfxn[z_] := Mod[z, 1];
-    mList = Map[mfxn, ZpList];
-    nList = Map[nfxn, ZpList];
-    TwoDCords = Partition[Riffle[mList, nList], 2];
+    mList = Map[mfxn, ZpList];(*Solves for each m coordinate for each z_P*)
+    nList = Map[nfxn, ZpList];(*Solves for each n coordinate for each z_P*)
+    TwoDCords = Partition[Riffle[mList, nList], 2]; (*Orders the points into on set as pairs (m,n)*)
+    (*This IO check adds point to coordinate (0,0),(1,0),(0,1),(1,1), the initial check for this on off switch needs to be updated because it uses a form that cannot be proven true without source code for NSolve*)
     If[IO == 1, 
-     plotFlat = 
-      Graphics[{color, PointSize[size], Point[TwoDCords], 
-        Point[{{0, 0}, {0, 1}, {1, 0}, {1, 1}}]}], 
-     plotFlat = Graphics[{color, PointSize[size], Point[TwoDCords]}]];
-    (*plotFlat=Graphics[{color,PointSize[size],Point[TwoDCords],
-  Point[{0,0}]}];*)rho = 2;
-  ufxn[z_] := (rho + Cos[2 Pi*z[[1]]])*Cos[2 Pi*z[[2]]];
-  vfxn[z_] := (rho + Cos[2 Pi*z[[1]]])*Sin[2 Pi*z[[2]]];
-  wfxn[z_] := Sin[2 Pi*z[[1]]];
-  uList = Map[ufxn, TwoDCords];
-  vList = Map[vfxn, TwoDCords];
-  wList = Map[wfxn, TwoDCords];
-  ThreeDCords = Partition[{uList, vList, wList}~Flatten~{2, 1}, 3];
-  If[IO == 1, 
-   plotTor = 
-    Graphics3D[{color, PointSize[size], Point[ThreeDCords], 
-      Point[{{3, 0, 0}}]}], 
-   plotTor = Graphics3D[{color, PointSize[size], Point[ThreeDCords]}]];
-  Return[{plotFlat, plotTor}]]
-
-
+       plotFlat = Graphics[{color, PointSize[size], Point[TwoDCords], Point[{{0, 0}, {0, 1}, {1, 0}, {1, 1}}]}], 
+       plotFlat = Graphics[{color, PointSize[size], Point[TwoDCords]}]];
+    
+    rho = 2;
+    (*The following three lines are functions for computing the three d coordinates (u,v,w)*)
+    ufxn[z_] := (rho + Cos[2 Pi*z[[1]]])*Cos[2 Pi*z[[2]]];
+    vfxn[z_] := (rho + Cos[2 Pi*z[[1]]])*Sin[2 Pi*z[[2]]];
+    wfxn[z_] := Sin[2 Pi*z[[1]]];
+    (*The following three lines actualy compute the three d cords*)
+    uList = Map[ufxn, TwoDCords];
+    vList = Map[vfxn, TwoDCords];
+    wList = Map[wfxn, TwoDCords];
+    (*Orders the triples (u,v,w) into a set*)
+    ThreeDCords = Partition[{uList, vList, wList}~Flatten~{2, 1}, 3];
+    (*This IO check adds the point associated with the branch point infinity*)
+    If[IO == 1, 
+       plotTor = Graphics3D[{color, PointSize[size], Point[ThreeDCords], Point[{{3, 0, 0}}]}], 
+       plotTor = Graphics3D[{color, PointSize[size], Point[ThreeDCords]}]];
+Return[{plotFlat, plotTor}]]
+(**)
+(**)
+(**)
+Lables[{ZpList_, Omega1_, Omega2_}] := 
+ Module[{mfxn, nfxn, mList, nList, Modfxn, TwoDCords, plotFlat, rho, 
+   Lables, ufxn, vfxn, wfxn, uList, vList, wList, ThreeDCords, 
+   plotTor}, mfxn[z_] := Mod[Im[z/Omega2]/Im[Omega1/Omega2], 1];
+  nfxn[z_] := Mod[Im[z/Omega1]/Im[Omega2/Omega1], 1];
+  mList = Map[mfxn, ZpList];
+  nList = Map[nfxn, ZpList];
+  TwoDCords = Partition[Riffle[mList, nList], 2];
+  Lables = {};
+  For[i = 1, i <= Length[TwoDCords], i++, 
+   AppendTo[Lables, Text[Style[i, FontSize -> 18], TwoDCords[[i]]]]];
+  Return[Lables]]
+(**)
+(**)
+(**)
+Mod5[{a1_, a2_, a3_, a4_, a6_}, {B_, x_, y_}, x0_ : 1/2] := 
+ Module[{Bv, Wv, Ev, Root1, Root2, Root3, alist, Lv, blist, clist, 
+   EdgeVerts, WhiteVerts, BlackVerts, EDessin, BDessin, WDessin, 
+   PlotFlat, LDessin, PlotTors, TwoDDessin, LabelVerts, ThreeDDessin, 
+   E, IOb, IOw}, {Bv, Wv, Ev, Lv} = 
+   Mod1[{a1, a2, a3, a4, a6}, {B, x, y}, x0];
+  {Root1, Root2, Root3, alist, blist, clist} = 
+   Mod2[{a1, a2, a3, a4, a6}, {x, y}];
+  SetSharedVariable[Root1, Root2, Root3, alist, blist, clist];
+  BlackVerts = Append[{Root1, Root2, Root3, alist, blist, clist}, Bv];
+  WhiteVerts = Append[{Root1, Root2, Root3, alist, blist, clist}, Wv];
+  EdgeVerts = Append[{Root1, Root2, Root3, alist, blist, clist}, Ev];
+  LabelVerts = Append[{Root1, Root2, Root3, alist, blist, clist}, Lv];
+  EdgeVerts = Mod3[{a1, a3}, EdgeVerts];
+  EDessin = Mod4[EdgeVerts, Gray, .012, 0];
+  BlackVerts = Mod3[{a1, a3}, BlackVerts];
+  IOw = 0;
+  IOb = 0;
+  Print[Length[Bv]];
+  Print[Length[Wv]];
+  If[Length[Bv] < Length[Wv], IOb = 1];
+  If[Length[Wv] < Length[Bv], IOw = 1];
+  BDessin = Mod4[BlackVerts, Red, .04, IOb];
+  WhiteVerts = Mod3[{a1, a3}, WhiteVerts];
+  WDessin = Mod4[WhiteVerts, Blue, .04, IOw];
+  LabelVerts = Mod3[{a1, a3}, LabelVerts];
+  Print[LabelVerts];
+  LDessin = Lables[LabelVerts];
+  LDessin = Graphics[LDessin];
+  PlotFlat = {EDessin[[1]], WDessin[[1]], BDessin[[1]]};
+  TwoDDessin = 
+   Show[Graphics[{Arrowheads[.05], {Brown, Opacity[.6], 
+       Text[a, {.03, .5}], Text[a, {.97, .5}], Text[b, {.5, .03}], 
+       Text[b, {.5, .97}]}, {LightYellow, Opacity[.5], 
+       Polygon[{{0, 0}, {0, 1}, {1, 1}, {1, 0}}]}, {Brown, 
+       Opacity[.3], Arrow[{{0, 0}, {0, 1}}], Arrow[{{0, 0}, {1, 0}}], 
+       Arrow[{{1, 0}, {1, 1}}], Arrow[{{0, 1}, {1, 1}}]}}], PlotFlat, 
+    LDessin];
+  PlotTors = {EDessin[[2]], WDessin[[2]], BDessin[[2]]};
+  ThreeDDessin = 
+   Show[ParametricPlot3D[{(2 + Cos[\[Theta]]) Cos[
+        x], (2 + Cos[\[Theta]]) Sin[x], Sin[\[Theta]]}, {x, -Pi, 
+      Pi}, {\[Theta], -Pi, Pi}, MeshStyle -> None, 
+     BoundaryStyle -> None, Axes -> None, Boxed -> False, 
+     PlotStyle -> {LightYellow, Opacity[.5]}], PlotTors];
+  Return[{TwoDDessin, 
+    ThreeDDessin, {Root1, Root2, Root3, alist, blist, clist}}]]
+Mod5[{0,0,0,0,1},
+{(y+1)/2
+,x,y},.48]
  
